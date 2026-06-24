@@ -1,0 +1,17 @@
+import Database from 'better-sqlite3';
+const db = new Database('./data/assumed_names.db', { readonly: true });
+const one = (q) => db.prepare(q).get();
+const all = (q) => db.prepare(q).all();
+console.log('TOTAL rows:', one('SELECT COUNT(*) n FROM filings').n);
+console.log('distinct film_code:', one('SELECT COUNT(DISTINCT film_code) n FROM filings').n);
+console.log('image_status:', all('SELECT image_status, COUNT(*) n FROM filings GROUP BY image_status'));
+console.log('file_date span:', one('SELECT MIN(file_date) mn, MAX(file_date) mx FROM filings'));
+console.log('status_type distribution:', all('SELECT status_type, COUNT(*) n FROM filings GROUP BY status_type ORDER BY n DESC LIMIT 8'));
+console.log('owners per filing:', all("SELECT (LENGTH(owners)-LENGTH(REPLACE(owners,',',''))+1) owners_n, COUNT(*) c FROM filings WHERE owners!='[]' GROUP BY owners_n ORDER BY owners_n LIMIT 8"));
+console.log('rows w/ 0 owners:', one("SELECT COUNT(*) n FROM filings WHERE owners='[]'").n);
+console.log('\nNULL/blank field check (want all 0):');
+console.log(one("SELECT SUM(film_code IS NULL OR film_code='') film, SUM(file_number IS NULL OR file_number='') fileno, SUM(business_name IS NULL OR business_name='') biz, SUM(file_date IS NULL) fdate, SUM(term IS NULL OR term='') term, SUM(status_type IS NULL OR status_type='') status, SUM(pages IS NULL) pages, SUM(doc_token IS NULL OR doc_token='') token FROM filings"));
+console.log('\nruns:', all('SELECT id, mode, range_from, range_to, rows_seen, rows_new, ok FROM runs'));
+console.log('\nsample rows (newest 3):');
+for (const r of all("SELECT film_code, file_number, term, business_name, owners, status_type, file_date, pages FROM filings ORDER BY file_date DESC, film_code DESC LIMIT 3")) console.log(JSON.stringify(r));
+db.close();

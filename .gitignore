@@ -1,0 +1,8 @@
+.env
+.env.*
+node_modules/
+recon-out/
+data/
+
+eng.traineddata
+*.traineddata
