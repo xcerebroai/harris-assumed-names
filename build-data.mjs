@@ -17,22 +17,29 @@ try {
   // status_type, so the dashboard's hide-by-default + "show withdrawn" toggle and the
   // stat tiles keep working exactly as built (the client filters them out by default).
   const raw = db.prepare(`
-    SELECT film_code, file_number, term, business_name, owners, status_type, file_date, pages, image_status,
+    SELECT film_code, file_number, business_name, owners, status_type, file_date, image_status,
            business_street, business_city, business_state, business_zip,
            residence_street, residence_city, residence_state, residence_zip
     FROM filings
     ORDER BY file_date DESC, film_code DESC
   `).all();
 
+  // Omit null address sub-fields (only ~43 rows have an address) — shrinks the payload
+  // substantially so the page loads fast. Address objects are {} when nothing is parsed.
+  const addr = (s, c, st, z) => {
+    const o = {};
+    if (s) o.street = s; if (c) o.city = c; if (st) o.state = st; if (z) o.zip = z;
+    return o;
+  };
   const rows = raw.map((r) => {
     let owners = [];
     try { owners = JSON.parse(r.owners || '[]'); } catch { owners = []; }
     return {
-      film_code: r.film_code, file_number: r.file_number, term: r.term,
+      film_code: r.film_code, file_number: r.file_number,
       business_name: r.business_name, owners, status_type: r.status_type,
-      file_date: r.file_date, pages: r.pages, image_status: r.image_status,
-      business: { street: r.business_street, city: r.business_city, state: r.business_state, zip: r.business_zip },
-      residence: { street: r.residence_street, city: r.residence_city, state: r.residence_state, zip: r.residence_zip },
+      file_date: r.file_date, image_status: r.image_status,
+      business: addr(r.business_street, r.business_city, r.business_state, r.business_zip),
+      residence: addr(r.residence_street, r.residence_city, r.residence_state, r.residence_zip),
     };
   });
 

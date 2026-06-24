@@ -70,14 +70,20 @@ function loadLeads() {
   const rows = ws ? ALL.filter((r) => isActive(r) && r.file_date >= ws) : [];
   $('leadsCnt').textContent = rows.length ? `${fmtNum(rows.length)} filed since ${fmtDate(ws)}` : '';
   if (!rows.length) { $('leadGrid').innerHTML = '<div class="empty">No new filings in the last 7 days.</div>'; return; }
-  $('leadGrid').innerHTML = rows.slice(0, 24).map((r) => `
+  const CAP = 11;
+  $('leadGrid').innerHTML = rows.slice(0, CAP).map((r) => `
     <div class="lead">
       <span class="newbadge">NEW</span>
       <div class="biz">${esc(r.business_name) || '—'}</div>
       <div class="meta">${fmtDate(r.file_date)} · ${statusBadge(r.image_status)}</div>
       <div class="own">${ownersHtml(r.owners)}</div>
       <div class="addr">${addressHtml(r)}</div>
-    </div>`).join('') + (rows.length > 24 ? `<div class="lead" style="display:grid;place-items:center;color:var(--muted)">+${rows.length - 24} more this week ↓</div>` : '');
+    </div>`).join('') + (rows.length > CAP
+      ? `<div class="lead" style="display:grid;place-items:center;text-align:center;cursor:pointer;border-style:dashed" id="moreLeads">
+           <div><b>+${fmtNum(rows.length - CAP)} more this week</b><br><span style="color:var(--muted)">see the full list below ↓</span></div>
+         </div>` : '');
+  const more = $('moreLeads');
+  if (more) more.addEventListener('click', () => document.querySelector('.toolbar').scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 
 // ---- cities ----
@@ -163,6 +169,9 @@ document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('
 }));
 
 (async function init() {
+  // loading state so the page is never blank during the data.json fetch
+  $('tiles').innerHTML = '<div class="tile" style="grid-column:1/-1;text-align:center;color:var(--muted)">Loading filings…</div>';
+  $('tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Loading leads…</td></tr>';
   try {
     const data = await (await fetch('./data.json', { cache: 'no-cache' })).json();
     ALL = data.rows || [];
