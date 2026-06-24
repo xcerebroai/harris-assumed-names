@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Harris County · Assumed-Name Leads</title>
+<style>
+  :root{
+    --navy:#0f1f3d; --navy2:#16294f; --blue:#2563eb; --blue-soft:#e8f0fe;
+    --ink:#1a2433; --muted:#6b7790; --line:#e6eaf0; --bg:#f4f6fb; --card:#fff;
+    --green:#0a8f5b; --amber:#b7791f; --red:#c0392b; --new:#1d4ed8;
+    --shadow:0 1px 3px rgba(16,31,61,.08),0 4px 16px rgba(16,31,61,.05);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  a{color:var(--blue);text-decoration:none}
+  header{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;padding:20px 28px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .dot{width:34px;height:34px;border-radius:9px;background:var(--blue);display:grid;place-items:center;font-weight:700;color:#fff}
+  .brand h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+  .brand .sub{color:#9fb3d9;font-size:12.5px;margin-top:2px}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:-34px auto 0}
+  .tile{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 18px 16px}
+  .tile .label{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .tile .num{font-size:30px;font-weight:720;margin-top:6px;letter-spacing:-.5px}
+  .tile .foot{font-size:12px;color:var(--muted);margin-top:3px}
+  .tile.accent{background:linear-gradient(120deg,var(--blue),#1e40af);color:#fff}
+  .tile.accent .label,.tile.accent .foot{color:#cfe0ff}
+  section{margin:26px 0}
+  .sec-head{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}
+  .sec-head h2{font-size:15px;margin:0;font-weight:680}
+  .sec-head .cnt{color:var(--muted);font-size:12.5px}
+  .pin{background:linear-gradient(120deg,#fff,#fbfdff);border:1px solid #dbe6ff;border-left:4px solid var(--new);
+       border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .lead-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:6px}
+  .lead{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;position:relative}
+  .lead .newbadge{position:absolute;top:10px;right:10px;background:var(--new);color:#fff;font-size:10px;font-weight:700;
+       padding:2px 7px;border-radius:20px;letter-spacing:.5px}
+  .lead .biz{font-weight:670;font-size:14.5px;padding-right:46px}
+  .lead .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .lead .own{margin-top:6px;font-size:13px}
+  .lead .addr{margin-top:8px;font-size:12.5px}
+  .toolbar{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;
+       display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .toolbar input[type=text],.toolbar input[type=date],.toolbar select{
+       border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px;background:#fff;color:var(--ink)}
+  .toolbar input[type=text].search{flex:1;min-width:220px}
+  .chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);user-select:none}
+  .grow{flex:1}
+  .tablecard{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#fafbfe;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:680;cursor:pointer;white-space:nowrap}
+  th .arrow{color:var(--blue)}
+  tbody tr:hover{background:#f8faff}
+  td .biz{font-weight:640}
+  td .fn{color:var(--muted);font-size:11.5px;margin-top:2px}
+  .badge{display:inline-block;font-size:11px;font-weight:660;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .b-ex{background:#e4f6ee;color:var(--green)} .b-pe{background:#fdf2dd;color:var(--amber)} .b-de{background:#fbe7e4;color:var(--red)}
+  .b-wd{background:#eef0f4;color:#7b8499}
+  .addr .line{font-size:13px}
+  .addr .sz{color:var(--muted)}
+  .addr .flag{display:inline-block;margin-left:6px;font-size:10px;color:var(--amber);border:1px solid #f0dcae;
+       background:#fdf7ec;border-radius:5px;padding:0 5px;cursor:help;vertical-align:1px}
+  .addr .note{color:var(--muted);font-style:italic;font-size:12.5px}
+  .owners .more{color:var(--muted);font-size:12px}
+  .footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:var(--muted);font-size:12.5px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 14px;font-size:13px;cursor:pointer;color:var(--ink)}
+  .btn:hover{background:#f4f7ff;border-color:#cdd8ee}
+  .btn[disabled]{opacity:.45;cursor:default}
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap}
+  .legend b{color:var(--ink)}
+  .stamp{color:#9fb3d9;font-size:11.5px;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="max-width:1240px">
+    <div class="brand">
+      <div class="dot">HC</div>
+      <div>
+        <h1>Harris County · Assumed-Name Leads</h1>
+        <div class="sub">New DBA filings &amp; owner addresses</div>
+        <div class="stamp" id="stamp"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tiles" id="tiles"></div>
+
+  <section id="leadsSec">
+    <div class="sec-head"><h2>★ Leads of the Week</h2><span class="cnt" id="leadsCnt"></span></div>
+    <div class="pin"><div class="lead-grid" id="leadGrid"></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>All Leads</h2><span class="cnt" id="rowsCnt"></span></div>
+    <div class="toolbar">
+      <input type="text" class="search" id="q" placeholder="Search business or owner name…" />
+      <select id="city"><option value="">All cities</option></select>
+      <select id="status">
+        <option value="">Any image status</option>
+        <option value="extracted">Address extracted</option>
+        <option value="pending">Awaiting image</option>
+        <option value="dead">No image</option>
+      </select>
+      <input type="date" id="from" title="Filed from" />
+      <input type="date" id="to" title="Filed to" />
+      <label class="chk"><input type="checkbox" id="hasAddr" /> Has address</label>
+      <label class="chk"><input type="checkbox" id="showWd" /> Show withdrawn</label>
+      <span class="grow"></span>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+
+    <div class="tablecard">
+      <table>
+        <thead><tr>
+          <th data-sort="business_name">Business <span class="arrow"></span></th>
+          <th>Owner(s)</th>
+          <th data-sort="file_date">Filed <span class="arrow"></span></th>
+          <th>Status</th>
+          <th data-sort="city">City <span class="arrow"></span></th>
+          <th>Address (confidence-flagged)</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">No leads match your filters.</div>
+      <div class="footer">
+        <span id="pageInfo"></span>
+        <span>
+          <button class="btn" id="prev">‹ Prev</button>
+          <button class="btn" id="next">Next ›</button>
+        </span>
+      </div>
+    </div>
+    <div class="legend">
+      <span><b>Address confidence:</b></span>
+      <span>street + city = reliable</span>
+      <span class="sz">state + zip = muted (OCR low-confidence) <span class="flag">OCR</span></span>
+      <span>· Addresses are never authoritative.</span>
+    </div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
