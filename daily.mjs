@@ -6,15 +6,19 @@
 //                  (image_status NOT IN ('extracted','dead') AND last_checked != today)
 //                  skips already-extracted rows and re-verifies prior pending rows; only a
 //                  genuine "IMAGE NOT FOUND" burns a retry strike — timeouts are transient.
-//   (c) Publish  : rebuild docs/data.json, then commit + push so the GitHub Pages dashboard
-//                  (and any export consuming data.json) refreshes automatically.
+//   (c) Export   : generate a fresh dated DELTA skip-trace CSV of newly-qualified rows only
+//                  (ledger-based; already-exported film_codes never repeat). Output lands in
+//                  exports/ which is gitignored — this PII never enters git.
+//   (d) Publish  : rebuild docs/data.json, then commit + push so the GitHub Pages dashboard
+//                  refreshes. Staging is restricted to docs/data.json; exports/ is never
+//                  staged (and a guard aborts the push if anything under exports/ ever is).
 //
 // Designed to run unattended in the early-morning low-traffic window (see the Windows
 // Scheduled Task "HarrisAssumedNames-Daily").
 //
 // Usage: node daily.mjs [--limit N] [--today MM/DD/YYYY] [--no-publish]
 //   --limit defaults to 150 (the safe per-session batch). Pass --limit 0 for uncapped.
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 
 const argv = process.argv.slice(2);
 const passthrough = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? [flag, argv[i + 1]] : []; };
@@ -43,20 +47,37 @@ await node('./scraper.mjs', ['--daily', ...today]);
 console.log(`\n=== Stage 2: OCR enrich (batch ${limit[1] === '0' ? 'uncapped' : limit[1]}) ===`);
 await node('./enrich.mjs', [...today, ...limit]);
 
+// Stage 3: local-only delta skip-trace CSV (gitignored PII). Runs even with --no-publish.
+console.log('\n=== Stage 3: skip-trace export (local delta CSV) ===');
+await node('./export-skiptrace.mjs', []);
+
 if (!doPublish) {
   console.log('\n=== Publish skipped (--no-publish) ===\n=== DAILY: done ===');
 } else {
-  console.log('\n=== Publish: rebuild data.json + commit + push ===');
+  console.log('\n=== Stage 4: publish — rebuild data.json + commit + push ===');
   await node('./build-data.mjs', []);
 
-  // Commit only if data.json actually changed; never fail the run on a no-op commit.
   const git = (args) => run('git', args);
+  // Stage ONLY the public dashboard data — never `git add .`/`-A`, so exports/ (PII) and
+  // any other local artifacts can never be swept into the commit.
   await git(['add', 'docs/data.json']);
+
+  // Safety guard: assert nothing under exports/ (or the ledger) is staged before we push.
+  // If this ever trips, something is misconfigured — abort rather than risk leaking PII.
+  const staged = execFileSync('git', ['diff', '--cached', '--name-only'], { encoding: 'utf8' })
+    .split(/\r?\n/).filter(Boolean);
+  const leaked = staged.filter((p) => p.startsWith('exports/'));
+  if (leaked.length) {
+    console.error('ABORT: refusing to push — exports/ paths are staged:', leaked.join(', '));
+    process.exit(1);
+  }
+  console.log(`staged for commit: ${staged.length ? staged.join(', ') : '(nothing)'}`);
+
   const stamp = new Date().toISOString().slice(0, 10);
   try {
     await git(['commit', '-m', `daily refresh ${stamp}: rebuild dashboard data`]);
     await git(['push']);
-    console.log('=== Published: pushed to main ===');
+    console.log('=== Published: pushed to main (exports/ excluded) ===');
   } catch {
     // `git commit` exits non-zero when there's nothing staged (no new addresses today).
     console.log('=== Nothing to publish (data.json unchanged) ===');
