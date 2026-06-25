@@ -22,7 +22,8 @@ function addressHtml(row) {
   const st = row.image_status;
   if (st === 'pending') return '<span class="note">Image not yet published</span>';
   if (st === 'dead') return '<span class="note">No image available</span>';
-  const a = row.business.street ? row.business : (row.residence.street ? row.residence : null);
+  // Business address only — owner home/residence addresses are intentionally not published.
+  const a = row.business && row.business.street ? row.business : null;
   if (!a || !a.street) return '<span class="note">Image present — address not parsed</span>';
   const reliable = `${esc(a.street)}${a.city ? ', ' + esc(a.city) : ''}`;
   const sz = [a.state, a.zip].filter(Boolean).map(esc).join(' ');
@@ -99,7 +100,7 @@ function loadCities() {
 }
 
 // ---- main table (client-side filter/sort/paginate) ----
-const SORT = { file_date: (r) => r.file_date || '', business_name: (r) => (r.business_name || '').toUpperCase(), city: (r) => (r.business.city || r.residence.city || '').toUpperCase() };
+const SORT = { file_date: (r) => r.file_date || '', business_name: (r) => (r.business_name || '').toUpperCase(), city: (r) => ((r.business && r.business.city) || '').toUpperCase() };
 function filtered() {
   const q = state.q.trim().toLowerCase();
   let rows = ALL.filter((r) => {
@@ -129,7 +130,7 @@ function loadRows() {
       <td class="owners">${ownersHtml(r.owners)}</td>
       <td>${fmtDate(r.file_date)}</td>
       <td>${statusBadge(r.image_status)}${r.status_type === WITHDRAWN ? ' <span class="badge b-wd">withdrawn</span>' : ''}</td>
-      <td>${esc(r.business.city || r.residence.city || '')}</td>
+      <td>${esc((r.business && r.business.city) || '')}</td>
       <td class="addr">${addressHtml(r)}</td>
     </tr>`).join('');
   $('empty').style.display = page.length ? 'none' : 'block';
