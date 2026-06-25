@@ -8,3 +8,7 @@ eng.traineddata
 *.traineddata
 
 logs/
+
+# Skip-trace exports contain PII (names + home addresses) — never commit. The repo's
+# /docs is published to public GitHub Pages; keep lead data out of git entirely.
+exports/
