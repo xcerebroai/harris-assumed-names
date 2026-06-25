@@ -18,19 +18,29 @@ function ownersHtml(owners) {
   const extra = owners.length > 1 ? ` <span class="more">+${owners.length - 1} more</span>` : '';
   return head + extra;
 }
+// Prefer the residence (home) address, fall back to business; label which is shown.
+function addressOf(row) {
+  if (row.residence && row.residence.street) return { a: row.residence, src: 'home' };
+  if (row.business && row.business.street) return { a: row.business, src: 'business' };
+  return null;
+}
+// Effective city/street for filters & sort, consistent with the displayed (residence-first) address.
+const effCity = (r) => ((r.residence && r.residence.city) || (r.business && r.business.city) || '');
+const hasAnyStreet = (r) => !!((r.residence && r.residence.street) || (r.business && r.business.street));
 function addressHtml(row) {
   const st = row.image_status;
   if (st === 'pending') return '<span class="note">Image not yet published</span>';
   if (st === 'dead') return '<span class="note">No image available</span>';
-  // Business address only — owner home/residence addresses are intentionally not published.
-  const a = row.business && row.business.street ? row.business : null;
-  if (!a || !a.street) return '<span class="note">Image present — address not parsed</span>';
+  const pick = addressOf(row);
+  if (!pick) return '<span class="note">Image present — address not parsed</span>';
+  const { a, src } = pick;
+  const label = `<span class="src" title="Address source on the filed document">${src}</span>`;
   const reliable = `${esc(a.street)}${a.city ? ', ' + esc(a.city) : ''}`;
   const sz = [a.state, a.zip].filter(Boolean).map(esc).join(' ');
   const szHtml = sz
     ? ` <span class="sz">${sz}</span><span class="flag" title="State &amp; ZIP are OCR low-confidence — verify before use">OCR</span>`
     : ` <span class="flag" title="State &amp; ZIP not captured by OCR">no st/zip</span>`;
-  return `<span class="line">${reliable}${szHtml}</span>`;
+  return `<span class="line">${label} ${reliable}${szHtml}</span>`;
 }
 function statusBadge(st) {
   if (st === 'extracted') return '<span class="badge b-ex">Address extracted</span>';
@@ -92,7 +102,7 @@ function loadCities() {
   const counts = new Map();
   for (const r of ALL) {
     if (!isActive(r)) continue;
-    const c = (r.business.city || '').trim();
+    const c = effCity(r).trim();
     if (c) counts.set(c, (counts.get(c) || 0) + 1);
   }
   const cities = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 200);
@@ -100,7 +110,7 @@ function loadCities() {
 }
 
 // ---- main table (client-side filter/sort/paginate) ----
-const SORT = { file_date: (r) => r.file_date || '', business_name: (r) => (r.business_name || '').toUpperCase(), city: (r) => ((r.business && r.business.city) || '').toUpperCase() };
+const SORT = { file_date: (r) => r.file_date || '', business_name: (r) => (r.business_name || '').toUpperCase(), city: (r) => effCity(r).toUpperCase() };
 function filtered() {
   const q = state.q.trim().toLowerCase();
   let rows = ALL.filter((r) => {
@@ -109,9 +119,9 @@ function filtered() {
       const hay = ((r.business_name || '') + ' ' + (r.owners || []).join(' ')).toLowerCase();
       if (!hay.includes(q)) return false;
     }
-    if (state.city && r.business.city !== state.city) return false;
+    if (state.city && effCity(r) !== state.city) return false;
     if (state.status && r.image_status !== state.status) return false;
-    if (state.hasAddress && !(r.business.street && r.business.street.trim())) return false;
+    if (state.hasAddress && !hasAnyStreet(r)) return false;
     if (state.from && (!r.file_date || r.file_date < state.from)) return false;
     if (state.to && (!r.file_date || r.file_date > state.to)) return false;
     return true;
@@ -130,7 +140,7 @@ function loadRows() {
       <td class="owners">${ownersHtml(r.owners)}</td>
       <td>${fmtDate(r.file_date)}</td>
       <td>${statusBadge(r.image_status)}${r.status_type === WITHDRAWN ? ' <span class="badge b-wd">withdrawn</span>' : ''}</td>
-      <td>${esc((r.business && r.business.city) || '')}</td>
+      <td>${esc(effCity(r))}</td>
       <td class="addr">${addressHtml(r)}</td>
     </tr>`).join('');
   $('empty').style.display = page.length ? 'none' : 'block';

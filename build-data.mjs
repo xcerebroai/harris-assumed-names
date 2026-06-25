@@ -16,13 +16,13 @@ try {
   // All current filings. Withdrawn ("Withdrawn Unknown") rows are INCLUDED but tagged via
   // status_type, so the dashboard's hide-by-default + "show withdrawn" toggle and the
   // stat tiles keep working exactly as built (the client filters them out by default).
-  // PRIVACY: owner RESIDENCE / home addresses are deliberately NOT selected here. This file
-  // is committed and served on the PUBLIC GitHub Pages site, so it must never carry home
-  // addresses. Residence data stays in the DB and only flows to the local, gitignored
-  // skip-trace CSV (export-skiptrace.mjs). The public dashboard shows business info only.
+  // Public dashboard publishes BOTH residence and business addresses for extracted rows
+  // (owner-authorized). Non-extracted rows have no address fields, so their address objects
+  // come out empty. Full address also remains in the local skip-trace CSV.
   const raw = db.prepare(`
     SELECT film_code, file_number, business_name, owners, status_type, file_date, image_status,
-           business_street, business_city, business_state, business_zip
+           business_street, business_city, business_state, business_zip,
+           residence_street, residence_city, residence_state, residence_zip
     FROM filings
     ORDER BY file_date DESC, film_code DESC
   `).all();
@@ -42,7 +42,7 @@ try {
       business_name: r.business_name, owners, status_type: r.status_type,
       file_date: r.file_date, image_status: r.image_status,
       business: addr(r.business_street, r.business_city, r.business_state, r.business_zip),
-      // NB: no `residence` field — home addresses are intentionally excluded (see above).
+      residence: addr(r.residence_street, r.residence_city, r.residence_state, r.residence_zip),
     };
   });
 
