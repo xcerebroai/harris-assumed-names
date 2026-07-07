@@ -154,6 +154,46 @@ function loadRows() {
   if (th) th.textContent = state.dir === 'asc' ? '↑' : '↓';
 }
 
+// ---- CSV export (client-side; respects the active search + filters + sort) ----
+const csvCell = (v) => {
+  const s = v == null ? '' : String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+function statusText(r) {
+  const label = { extracted: 'Address extracted', pending: 'Awaiting image', dead: 'No image' }[r.image_status] || r.image_status || '';
+  if (r.status_type === WITHDRAWN) return label ? `${label} · withdrawn` : 'withdrawn';
+  return label;
+}
+function exportCsv() {
+  const rows = filtered(); // exactly the rows the current filters/search produce (all of them, not just this page)
+  const header = ['business_name', 'owner', 'address', 'city', 'state', 'zip', 'file_date', 'status'];
+  const lines = [header.map(csvCell).join(',')];
+  for (const r of rows) {
+    const a = (addressOf(r) || {}).a || {}; // residence-first, business fallback — same as the table's Address column
+    lines.push([
+      r.business_name || '',
+      (r.owners || []).join('; '),
+      a.street || '',
+      effCity(r),
+      a.state || '',
+      a.zip || '',
+      r.file_date || '',
+      statusText(r),
+    ].map(csvCell).join(','));
+  }
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `harris-leads-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ---- wiring ----
 let t;
 const debounce = (fn) => { clearTimeout(t); t = setTimeout(fn, 200); };
@@ -170,6 +210,7 @@ $('reset').addEventListener('click', () => {
   $('q').value = ''; $('city').value = ''; $('status').value = ''; $('from').value = ''; $('to').value = '';
   $('hasAddr').checked = false; $('showWd').checked = false; loadRows();
 });
+$('exportCsv').addEventListener('click', exportCsv);
 $('prev').addEventListener('click', () => { state.offset = Math.max(0, state.offset - state.limit); loadRows(); });
 $('next').addEventListener('click', () => { if (state.offset + state.limit < state.total) { state.offset += state.limit; loadRows(); } });
 document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('click', () => {
