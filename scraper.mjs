@@ -16,7 +16,12 @@ import path from 'node:path';
 const BASE = 'https://www.cclerk.hctx.net/applications/websearch/';
 const USER = process.env.HCCLERK_USER;
 const PASS = process.env.HCCLERK_PASS;
-const TODAY = process.env.TODAY || '06/23/2026'; // pinned "now" for reproducibility
+// Real current date in America/Chicago (filings + the scheduled task run on Central time),
+// formatted MM/DD/YYYY to match the county search form. TODAY itself is resolved below,
+// after the CLI parser, so the --today flag can take precedence (see resolveRange usage).
+const centralToday = () => new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 const EARLIEST = '01/01/1990'; // generous lower bound for full backfill
 const PAGE_CAP = 200; // server-side DataPager page size
 
@@ -26,6 +31,10 @@ const arg = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? (argv[
 const MODE_DAILY = !!arg('daily', false);
 const MODE_BACKFILL = !!arg('backfill', false);
 const SHARD = (arg('shard', 'day') || 'day').toString();
+// Upper-bound "now" for the search window. Precedence: --today flag > TODAY env var > real
+// current date (Central). daily.mjs passes --today through; env stays available for testing.
+const todayFlag = arg('today');
+const TODAY = (todayFlag && todayFlag !== true) ? todayFlag : (process.env.TODAY || centralToday());
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 // ---------- date helpers (MM/DD/YYYY) ----------
