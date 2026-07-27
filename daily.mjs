@@ -38,8 +38,30 @@ function run(cmd, args, opts = {}) {
   });
 }
 const node = (script, args) => run(process.execPath, [script, ...args]);
+const git = (args) => run('git', args);
 
 console.log(`=== DAILY ${new Date().toISOString()} ===`);
+
+// Stage 0: reconcile with origin before doing any work, so the publish in Stage 4 is
+// always a fast-forward. main occasionally advances outside this job (a dashboard or
+// scraper fix pushed by hand), and a single such commit otherwise wedges every
+// subsequent run's push.
+console.log('\n=== Stage 0: sync with origin (pull --rebase) ===');
+try {
+  await git(['pull', '--rebase', 'origin', 'main']);
+} catch (err) {
+  // A conflicted rebase leaves the tree mid-rebase, which would poison every later
+  // stage and every subsequent run, so unwind it before exiting.
+  console.error(`PULL FAILED: ${err.message}`);
+  try {
+    await git(['rebase', '--abort']);
+    console.error('Rebase aborted — working tree restored to its pre-pull state.');
+  } catch {
+    // Not mid-rebase (network/auth failure, or already clean) — nothing to unwind.
+  }
+  console.error('Reconcile by hand with: git pull --rebase origin main');
+  process.exit(1);
+}
 
 console.log('\n=== Stage 1: scrape new rows ===');
 await node('./scraper.mjs', ['--daily', ...today]);
@@ -57,7 +79,6 @@ if (!doPublish) {
   console.log('\n=== Stage 4: publish — rebuild data.json + commit + push ===');
   await node('./build-data.mjs', []);
 
-  const git = (args) => run('git', args);
   // Stage ONLY the public dashboard data — never `git add .`/`-A`, so exports/ (PII) and
   // any other local artifacts can never be swept into the commit.
   await git(['add', 'docs/data.json']);

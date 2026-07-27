@@ -7,7 +7,9 @@ setlocal
 set REPO=C:\Users\Owner\projects\harris-assumed-names
 cd /d "%REPO%"
 if not exist logs mkdir logs
-for /f "tokens=1-3 delims=/- " %%a in ("%date%") do set DSTAMP=%%c%%a%%b
+REM Locale-independent date stamp. Parsing %date% depends on the user's short-date
+REM format, which produced names like daily-27Mon07.log that don't sort by date.
+for /f %%d in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') do set DSTAMP=%%d
 echo ==== run-daily start %date% %time% ==== >> "logs\daily-%DSTAMP%.log"
 "C:\Program Files\nodejs\node.exe" daily.mjs --limit 200 >> "logs\daily-%DSTAMP%.log" 2>&1
 echo ==== run-daily end   %date% %time% (exit %ERRORLEVEL%) ==== >> "logs\daily-%DSTAMP%.log"
