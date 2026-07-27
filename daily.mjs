@@ -74,13 +74,32 @@ if (!doPublish) {
   console.log(`staged for commit: ${staged.length ? staged.join(', ') : '(nothing)'}`);
 
   const stamp = new Date().toISOString().slice(0, 10);
+  // Commit and push are handled separately: a failing `git commit` is routine (nothing
+  // staged), but a failing `git push` means the dashboard has silently stopped updating
+  // and must surface as a non-zero exit. Sharing one catch hid 48 rejected pushes for
+  // three weeks by reporting every one of them as "nothing to publish".
+  let committed = true;
   try {
     await git(['commit', '-m', `daily refresh ${stamp}: rebuild dashboard data`]);
-    await git(['push']);
-    console.log('=== Published: pushed to main (exports/ excluded) ===');
   } catch {
     // `git commit` exits non-zero when there's nothing staged (no new addresses today).
+    committed = false;
     console.log('=== Nothing to publish (data.json unchanged) ===');
+  }
+
+  if (committed) {
+    try {
+      await git(['push']);
+      console.log('=== Published: pushed to main (exports/ excluded) ===');
+    } catch (err) {
+      // Most likely a non-fast-forward rejection because main was advanced elsewhere.
+      // Reconciling means merging, which can conflict — not safe to do unattended, so
+      // stop loudly and leave the commit sitting locally for a human to resolve.
+      console.error(`PUSH FAILED: ${err.message}`);
+      console.error('The commit is safe locally but GitHub Pages is now serving stale data.');
+      console.error('Resolve with: git pull --no-rebase && git push');
+      process.exit(1);
+    }
   }
   console.log('\n=== DAILY: done ===');
 }
