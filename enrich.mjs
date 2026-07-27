@@ -50,7 +50,9 @@ const pickRows = db.prepare(`
   FROM filings
   WHERE image_status NOT IN ('extracted','dead')
     AND (last_checked IS NULL OR last_checked != ?)
-  ORDER BY file_date ASC
+  -- Newest-first: the freshest filings are the most valuable skip-trace leads, so they
+  -- must not wait behind the older backlog for the daily LIMIT to grind through it.
+  ORDER BY file_date DESC
   ${LIMIT ? 'LIMIT ' + LIMIT : ''}
 `);
 const pickProbeFilms = db.prepare(`
